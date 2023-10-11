@@ -19,10 +19,10 @@ func main() {
 
 	clientId := os.Getenv("CLIENT_ID")
 	clientSecret := os.Getenv("CLIENT_SECRET")
-	authBaseUrl := os.Getenv("AUTH_BASE_URL")
-	apiBaseUrl := os.Getenv("API_BASE_URL")
+	authBaseURL := os.Getenv("AUTH_BASE_URL")
+	apiBaseURL := os.Getenv("API_BASE_URL")
 
-	twitchSvc, err := twitch.NewService(clientId, clientSecret, authBaseUrl, apiBaseUrl)
+	twitchSvc, err := twitch.NewService(clientId, clientSecret, authBaseURL, apiBaseURL)
 	if err != nil {
 		log.Fatal("Error initializing twitch service")
 	}

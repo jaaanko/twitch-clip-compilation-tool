@@ -13,8 +13,8 @@ import (
 type twitchService struct {
 	clientId     string
 	clientSecret string
-	apiBaseUrl   string
-	authBaseUrl  string
+	apiBaseURL   string
+	authBaseURL  string
 	accessToken  accessToken
 }
 
@@ -30,14 +30,14 @@ type clipQueryResponse struct {
 
 type clip struct {
 	Duration     float32 `json:"duration"`
-	Url          string  `json:"url"`
-	ThumbnailUrl string  `json:"thumbnail_url"`
+	URL          string  `json:"url"`
+	ThumbnailURL string  `json:"thumbnail_url"`
 }
 
 var errUnsupportedThumbnailURL = errors.New("unable to generate direct URL from given thumbnail URL")
 
-func NewService(clientId, clientSecret, authBaseUrl, apiBaseUrl string) (*twitchService, error) {
-	token, err := getAccessToken(clientId, clientSecret, authBaseUrl)
+func NewService(clientId, clientSecret, authBaseURL, apiBaseURL string) (*twitchService, error) {
+	token, err := getAccessToken(clientId, clientSecret, authBaseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -45,23 +45,23 @@ func NewService(clientId, clientSecret, authBaseUrl, apiBaseUrl string) (*twitch
 	return &twitchService{
 		clientId:     clientId,
 		clientSecret: clientSecret,
-		apiBaseUrl:   apiBaseUrl,
-		authBaseUrl:  authBaseUrl,
+		apiBaseURL:   apiBaseURL,
+		authBaseURL:  authBaseURL,
 		accessToken:  token,
 	}, nil
 }
 
-func getAccessToken(clientId, clientSecret, authBaseUrl string) (accessToken, error) {
+func getAccessToken(clientId, clientSecret, authBaseURL string) (accessToken, error) {
 	data := url.Values{}
 	data.Set("client_id", clientId)
 	data.Set("client_secret", clientSecret)
 	data.Set("grant_type", "client_credentials")
-	authUrl, err := url.JoinPath(authBaseUrl, "oauth2/token")
+	authURL, err := url.JoinPath(authBaseURL, "oauth2/token")
 	if err != nil {
 		return accessToken{}, err
 	}
 
-	res, err := http.PostForm(authUrl, data)
+	res, err := http.PostForm(authURL, data)
 	if err != nil {
 		return accessToken{}, err
 	}
@@ -82,13 +82,13 @@ func getAccessToken(clientId, clientSecret, authBaseUrl string) (accessToken, er
 }
 
 func (twitchSvc twitchService) GetClipURLs(broadcasterId, startDate string, count int) ([]string, error) {
-	apiUrl, err := url.JoinPath(twitchSvc.apiBaseUrl, "clips")
+	apiURL, err := url.JoinPath(twitchSvc.apiBaseURL, "clips")
 	if err != nil {
 		return nil, err
 	}
 	client := &http.Client{}
 
-	req, err := http.NewRequest("GET", apiUrl, nil)
+	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (twitchSvc twitchService) GetClipURLs(broadcasterId, startDate string, coun
 	var directURLs []string
 	for _, clip := range clipQueryRes.Clips {
 		if clip.Duration >= 10.0 {
-			directURL, err := generateDirectURL(clip.ThumbnailUrl)
+			directURL, err := generateDirectURL(clip.ThumbnailURL)
 			if err != errUnsupportedThumbnailURL {
 				directURLs = append(directURLs, directURL)
 			}
