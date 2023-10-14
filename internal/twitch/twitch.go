@@ -68,8 +68,8 @@ func getAccessToken(clientId, clientSecret, authBaseURL string) (accessToken, er
 
 	defer res.Body.Close()
 
-	if res.StatusCode != 200 {
-		return accessToken{}, err
+	if res.StatusCode != http.StatusOK {
+		return accessToken{}, fmt.Errorf("expected status code: %v, got: %v", http.StatusOK, res.StatusCode)
 	}
 
 	var token accessToken
@@ -109,8 +109,8 @@ func (twitchSvc twitchService) GetClipURLs(broadcasterId, startDate string, coun
 
 	defer res.Body.Close()
 
-	if res.StatusCode != 200 {
-		return nil, err
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("expected status code: %v, got: %v", http.StatusOK, res.StatusCode)
 	}
 
 	var clipQueryRes clipQueryResponse
