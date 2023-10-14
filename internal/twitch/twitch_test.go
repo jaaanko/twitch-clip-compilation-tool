@@ -49,7 +49,8 @@ func TestGetClipURLs_ReturnsStatusOK(t *testing.T) {
 	testClipID := "testClipID1"
 	testURL := fmt.Sprintf("https://clips.twitch.tv/%s", testClipID)
 	testDuration := 25
-	testThumbnailURL := "https://clips-media-assets2.twitch.tv/test1/12345-offset-20320-preview-480x272.jpg"
+	commonPath := "test1/12345-offset-20320"
+	testThumbnailURL := fmt.Sprintf("https://clips-media-assets2.twitch.tv/%s-preview-480x272.jpg", commonPath)
 
 	apiSvr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf(`{
@@ -79,7 +80,7 @@ func TestGetClipURLs_ReturnsStatusOK(t *testing.T) {
 		t.Error("no clips returned")
 	}
 
-	expected := "https://clips-media-assets2.twitch.tv/test1/12345-offset-20320.mp4"
+	expected := fmt.Sprintf("https://clips-media-assets2.twitch.tv/%s.mp4", commonPath)
 	if clips[0] != expected {
 		t.Errorf("expected: %s, got: %s", expected, clips[0])
 	}
