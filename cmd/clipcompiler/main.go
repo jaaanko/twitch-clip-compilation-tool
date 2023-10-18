@@ -8,8 +8,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/jaaanko/twitch-clip-compilation-tool/internal/twitch"
@@ -17,6 +19,7 @@ import (
 )
 
 const outputDir = "out"
+const concatListFileName = "list.txt"
 
 func main() {
 	err := godotenv.Load()
@@ -56,7 +59,7 @@ func main() {
 
 	fmt.Println(clipLinks)
 	var wg sync.WaitGroup
-	var paths []string
+	var fileNames []string
 
 	err = os.MkdirAll(outputDir, 0750)
 	if err != nil {
@@ -64,32 +67,44 @@ func main() {
 	}
 
 	for i, link := range clipLinks {
-		path := fmt.Sprintf("clip%d.mp4", i)
+		fileName := fmt.Sprintf("clip%d.mp4", i)
 		wg.Add(1)
-		go func(path, link string) {
+		go func(fileName, link string) {
 			defer wg.Done()
 			// TODO: better error handling
-			saveClip(path, link)
-			paths = append(paths, path)
-		}(path, link)
+			saveClip(fileName, link)
+			fileNames = append(fileNames, fileName)
+		}(fileName, link)
 	}
 
 	wg.Wait()
 
-	file, err := os.Create(filepath.Join(outputDir, "list.txt"))
+	file, err := os.Create(filepath.Join(outputDir, concatListFileName))
 	if err != nil {
 		log.Fatalf("failed to create file: %v", err)
 	}
 
 	defer file.Close()
-	err = writeFileNames(paths, file)
+
+	filesModified := makeTimebaseEqual(fileNames)
+	err = writeFileNames(filesModified, file)
 	if err != nil {
 		log.Println(err)
 	}
+	remove(fileNames...)
+	cmd := exec.Command(
+		"ffmpeg", "-y", "-f", "concat", "-i",
+		filepath.Join(outputDir, concatListFileName), "-c", "copy", filepath.Join(outputDir, "compilation.mp4"),
+	)
+	if err := cmd.Run(); err != nil {
+		log.Fatal(err)
+	}
 
+	remove(concatListFileName)
+	remove(filesModified...)
 }
 
-func saveClip(path, link string) {
+func saveClip(fileName, link string) {
 	res, err := http.Get(link)
 	if err != nil {
 		log.Println(err)
@@ -103,7 +118,7 @@ func saveClip(path, link string) {
 		return
 	}
 
-	file, err := os.Create(filepath.Join(outputDir, path))
+	file, err := os.Create(filepath.Join(outputDir, fileName))
 	if err != nil {
 		log.Printf("failed to create file: %v", err)
 		return
@@ -127,4 +142,30 @@ func writeFileNames(fileNames []string, dest io.Writer) error {
 		}
 	}
 	return errFailedToWrite
+}
+
+func makeTimebaseEqual(fileNames []string) []string {
+	var filesModified []string
+	for _, fileName := range fileNames {
+		destFileName := fmt.Sprintf("%v_new.mp4", strings.TrimSuffix(fileName, filepath.Ext(fileName)))
+		cmd := exec.Command(
+			"ffmpeg", "-i",
+			filepath.Join(outputDir, fileName), "-c", "copy",
+			"-video_track_timescale", "15360", filepath.Join(outputDir, destFileName),
+		)
+		if err := cmd.Run(); err != nil {
+			fmt.Println(err)
+		}
+		filesModified = append(filesModified, destFileName)
+	}
+	return filesModified
+}
+
+func remove(fileNames ...string) {
+	for _, fileName := range fileNames {
+		err := os.Remove(filepath.Join(outputDir, fileName))
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
 }
