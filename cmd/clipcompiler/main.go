@@ -5,15 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 
+	"github.com/jaaanko/twitch-clip-compilation-tool/internal/downloader"
 	"github.com/jaaanko/twitch-clip-compilation-tool/internal/twitch"
 	"github.com/joho/godotenv"
 )
@@ -52,45 +52,37 @@ func main() {
 		log.Fatal("Not a valid integer")
 	}
 
-	clipLinks, err := twitchSvc.GetClipURLs(broadcasterId, startDate, count)
+	urls, err := twitchSvc.GetClipURLs(broadcasterId, startDate, count)
 	if err != nil {
 		log.Fatal("Cannot fetch clips")
 	}
 
-	fmt.Println(clipLinks)
-	var wg sync.WaitGroup
-	var fileNames []string
+	err = downloader.Run(outputDir, urls)
+	if errors.Is(err, downloader.ErrMkdir) {
+		log.Fatal(err)
+	} else if err != nil {
+		fmt.Println(err)
+	}
 
-	err = os.MkdirAll(outputDir, 0750)
+	fileNames, err := find(outputDir, ".mp4")
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	for i, link := range clipLinks {
-		fileName := fmt.Sprintf("clip%d.mp4", i)
-		wg.Add(1)
-		go func(fileName, link string) {
-			defer wg.Done()
-			// TODO: better error handling
-			saveClip(fileName, link)
-			fileNames = append(fileNames, fileName)
-		}(fileName, link)
-	}
-
-	wg.Wait()
 
 	file, err := os.Create(filepath.Join(outputDir, concatListFileName))
 	if err != nil {
 		log.Fatalf("failed to create file: %v", err)
 	}
 
-	defer file.Close()
-
 	filesModified := makeTimebaseEqual(fileNames)
 	err = writeFileNames(filesModified, file)
+
 	if err != nil {
 		log.Println(err)
 	}
+
+	file.Close()
+
 	remove(fileNames...)
 	cmd := exec.Command(
 		"ffmpeg", "-y", "-f", "concat", "-i",
@@ -102,35 +94,6 @@ func main() {
 
 	remove(concatListFileName)
 	remove(filesModified...)
-}
-
-func saveClip(fileName, link string) {
-	res, err := http.Get(link)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	defer res.Body.Close()
-
-	if res.StatusCode != 200 {
-		log.Printf("expected 200, got: %v", res.Status)
-		return
-	}
-
-	file, err := os.Create(filepath.Join(outputDir, fileName))
-	if err != nil {
-		log.Printf("failed to create file: %v", err)
-		return
-	}
-
-	defer file.Close()
-
-	_, err = io.Copy(file, res.Body)
-	if err != nil {
-		log.Println(err)
-		return
-	}
 }
 
 func writeFileNames(fileNames []string, dest io.Writer) error {
@@ -168,4 +131,18 @@ func remove(fileNames ...string) {
 			fmt.Println(err)
 		}
 	}
+}
+
+func find(root, ext string) ([]string, error) {
+	var fileNames []string
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if filepath.Ext(d.Name()) == ext {
+			fileNames = append(fileNames, d.Name())
+		}
+		return nil
+	})
+	return fileNames, err
 }
