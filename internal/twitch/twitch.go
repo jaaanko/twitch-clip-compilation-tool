@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -34,7 +35,7 @@ type clip struct {
 	ThumbnailURL string  `json:"thumbnail_url"`
 }
 
-var errUnsupportedThumbnailURL = errors.New("unable to generate direct URL from given thumbnail URL")
+var errCreateDownloadURL = errors.New("unable to create download URL")
 
 func NewService(clientId, clientSecret, authBaseURL, apiBaseURL string) (*twitchService, error) {
 	token, err := getAccessToken(clientId, clientSecret, authBaseURL)
@@ -119,23 +120,23 @@ func (twitchSvc twitchService) GetClipURLs(broadcasterId, startDate string, coun
 		return nil, err
 	}
 
-	var directURLs []string
+	var downloadURLs []string
 	for _, clip := range clipQueryRes.Clips {
-		if clip.Duration >= 10.0 {
-			directURL, err := generateDirectURL(clip.ThumbnailURL)
-			if err != errUnsupportedThumbnailURL {
-				directURLs = append(directURLs, directURL)
-			}
+		downloadURL, err := createDownloadURL(clip.ThumbnailURL)
+		if err != errCreateDownloadURL {
+			downloadURLs = append(downloadURLs, downloadURL)
+		} else {
+			log.Println(errCreateDownloadURL, clip)
 		}
 	}
 
-	return directURLs, nil
+	return downloadURLs, nil
 }
 
-func generateDirectURL(thumbnailURL string) (string, error) {
+func createDownloadURL(thumbnailURL string) (string, error) {
 	i := strings.LastIndex(thumbnailURL, "-preview")
 	if i == -1 {
-		return "", errUnsupportedThumbnailURL
+		return "", errCreateDownloadURL
 	}
 	return thumbnailURL[:i] + ".mp4", nil
 }

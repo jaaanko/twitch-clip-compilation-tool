@@ -12,8 +12,8 @@ import (
 
 var ErrMkdir = errors.New("failed to create output directory")
 
-func Run(outputDir string, urls []string) error {
-	err := os.MkdirAll(outputDir, 0750)
+func Run(outputPath string, urls []string) error {
+	err := os.MkdirAll(outputPath, 0750)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrMkdir, err)
 	}
@@ -22,7 +22,7 @@ func Run(outputDir string, urls []string) error {
 	errs := make(chan error, len(urls))
 
 	for i, url := range urls {
-		path := filepath.Join(outputDir, fmt.Sprintf("clip%d.mp4", i))
+		path := filepath.Join(outputPath, fmt.Sprintf("clip%d.mp4", i))
 		url := url
 		wg.Add(1)
 		go func() {
