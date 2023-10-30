@@ -26,14 +26,17 @@ func TestRun(t *testing.T) {
 			w.Write([]byte("clip data"))
 		}
 	}))
+	defer partialFailServer.Close()
 
 	fullFailServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
+	defer fullFailServer.Close()
 
 	successServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("clip data"))
 	}))
+	defer successServer.Close()
 
 	tests := map[string]struct {
 		server *httptest.Server
