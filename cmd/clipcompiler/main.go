@@ -52,15 +52,15 @@ func main() {
 		log.Fatal("Cannot fetch clips")
 	}
 
-	err = downloader.Run(outputDir, urls)
+	downloadedClips, err := downloader.Run(outputDir, urls)
 	if errors.Is(err, downloader.ErrMkdir) {
 		log.Fatal(err)
 	} else if err != nil {
 		fmt.Println(err)
 	}
 
-	compiler := compiler.New(outputDir, outputDir, "compilation.mp4")
-	if err = compiler.Run(); err != nil {
+	compiler := compiler.New(outputDir, "compilation.mp4")
+	if err = compiler.Run(downloadedClips); err != nil {
 		log.Fatal(err)
 	}
 }

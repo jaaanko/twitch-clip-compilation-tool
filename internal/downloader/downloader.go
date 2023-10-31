@@ -6,23 +6,24 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"sync"
 )
 
 var ErrMkdir = errors.New("failed to create output directory")
 
-func Run(outputPath string, urls []string) error {
+func Run(outputPath string, urls []string) ([]string, error) {
 	err := os.MkdirAll(outputPath, 0750)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrMkdir, err)
+		return nil, fmt.Errorf("%w: %v", ErrMkdir, err)
 	}
 
 	var wg sync.WaitGroup
 	errs := make(chan error, len(urls))
-
-	for i, url := range urls {
-		path := filepath.Join(outputPath, fmt.Sprintf("clip%d.mp4", i))
+	paths := make(chan string, len(urls))
+	for _, url := range urls {
+		path := filepath.Join(outputPath, path.Base(url))
 		url := url
 		wg.Add(1)
 		go func() {
@@ -30,6 +31,8 @@ func Run(outputPath string, urls []string) error {
 			err = download(path, url)
 			if err != nil {
 				errs <- err
+			} else {
+				paths <- path
 			}
 		}()
 	}
@@ -37,6 +40,7 @@ func Run(outputPath string, urls []string) error {
 	go func() {
 		wg.Wait()
 		close(errs)
+		close(paths)
 	}()
 
 	var joinedErrors error
@@ -44,7 +48,11 @@ func Run(outputPath string, urls []string) error {
 		joinedErrors = errors.Join(joinedErrors, err)
 	}
 
-	return joinedErrors
+	var downloaded []string
+	for path := range paths {
+		downloaded = append(downloaded, path)
+	}
+	return downloaded, joinedErrors
 }
 
 func download(path, url string) error {

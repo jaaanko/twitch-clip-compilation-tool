@@ -4,7 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
+	"path"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -12,15 +13,15 @@ import (
 )
 
 type result struct {
-	numDownloaded int
-	hasError      bool
+	downloaded map[string]bool
+	hasError   bool
 }
 
 func TestRun(t *testing.T) {
-	clip1 := "/example1.mp4"
-	clip2 := "/example2.mp4"
+	clip1 := "example1.mp4"
+	clip2 := "example2.mp4"
 	partialFailServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == clip1 {
+		if path.Base(r.URL.Path) == clip1 {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
 			w.Write([]byte("clip data"))
@@ -42,9 +43,17 @@ func TestRun(t *testing.T) {
 		server *httptest.Server
 		want   result
 	}{
-		"download partial fail": {server: partialFailServer, want: result{numDownloaded: 1, hasError: true}},
-		"download full fail":    {server: fullFailServer, want: result{numDownloaded: 0, hasError: true}},
-		"download success":      {server: successServer, want: result{numDownloaded: 2, hasError: false}},
+		"download partial fail": {
+			server: partialFailServer,
+			want:   result{downloaded: map[string]bool{clip2: true}, hasError: true},
+		},
+		"download full fail": {
+			server: fullFailServer,
+			want:   result{downloaded: map[string]bool{}, hasError: true}},
+		"download success": {
+			server: successServer,
+			want:   result{downloaded: map[string]bool{clip1: true, clip2: true}, hasError: false},
+		},
 	}
 
 	for name, tc := range tests {
@@ -54,15 +63,15 @@ func TestRun(t *testing.T) {
 			urls := []string{clipURL1, clipURL2}
 			tempDir := t.TempDir()
 
-			errDownload := downloader.Run(tempDir, urls)
+			downloaded, errDownload := downloader.Run(tempDir, urls)
 			hasError := errDownload != nil
 
-			numFiles, err := numberOfFiles(tempDir)
-			if err != nil {
-				t.Fatal(err)
+			fileNames := map[string]bool{}
+			for _, path := range downloaded {
+				fileNames[filepath.Base(path)] = true
 			}
 
-			got := result{numDownloaded: numFiles, hasError: hasError}
+			got := result{downloaded: fileNames, hasError: hasError}
 			if !reflect.DeepEqual(tc.want, got) {
 				if tc.want.hasError != got.hasError {
 					t.Fatalf("expected: %#v, got: %#v, error: %v", tc.want, got, errDownload)
@@ -72,15 +81,4 @@ func TestRun(t *testing.T) {
 			}
 		})
 	}
-}
-
-func numberOfFiles(path string) (int, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return 0, err
-	}
-	defer f.Close()
-
-	names, err := f.Readdirnames(0)
-	return len(names), err
 }

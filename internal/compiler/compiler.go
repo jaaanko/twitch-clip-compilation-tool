@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -14,28 +13,21 @@ import (
 )
 
 type compiler struct {
-	sourcePath string
 	outputPath string
 	outputName string
 }
 
 const fileListName = "list.txt"
 
-func New(sourcePath, outputPath, outputName string) compiler {
+func New(outputPath, outputName string) compiler {
 	return compiler{
-		sourcePath: sourcePath,
 		outputPath: outputPath,
 		outputName: outputName,
 	}
 }
 
-func (c compiler) Run() error {
-	fileNames, err := find(c.sourcePath, ".mp4")
-	if err != nil {
-		return err
-	}
-
-	filesModified, err := c.equalizeTimebase(fileNames)
+func (c compiler) Run(filePaths []string) error {
+	filesModified, err := c.equalizeTimebase(filePaths)
 	if err != nil {
 		log.Println(err)
 	}
@@ -56,23 +48,25 @@ func (c compiler) Run() error {
 		return fmt.Errorf("%v: %v", err, stderr.String())
 	}
 
+	c.cleanup(filesModified)
 	return nil
 }
 
-func (c compiler) equalizeTimebase(fileNames []string) ([]string, error) {
+func (c compiler) equalizeTimebase(filePaths []string) ([]string, error) {
 	var filesModified []string
 	var errs error
 
-	for _, fileName := range fileNames {
+	for _, path := range filePaths {
+		fileName := filepath.Base(path)
 		newFileName := fmt.Sprintf("%v_modified.mp4", strings.TrimSuffix(fileName, filepath.Ext(fileName)))
-		newFilePath := filepath.Join(c.outputPath, newFileName)
+		newPath := filepath.Join(c.outputPath, newFileName)
 		cmd := exec.Command(
 			"ffmpeg", "-i",
-			filepath.Join(c.sourcePath, fileName), "-c", "copy",
-			"-video_track_timescale", "15360", newFilePath,
+			path, "-c", "copy",
+			"-video_track_timescale", "15360", newPath,
 		)
 		if err := cmd.Run(); err != nil {
-			errs = errors.Join(errs, err)
+			errs = errors.Join(errs, fmt.Errorf("skipped %v: %v", fileName, err))
 		}
 		filesModified = append(filesModified, newFileName)
 	}
@@ -106,16 +100,8 @@ func appendFileNames(fileNames []string, dest io.Writer) error {
 	return nil
 }
 
-func find(root, ext string) ([]string, error) {
-	var fileNames []string
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if filepath.Ext(d.Name()) == ext {
-			fileNames = append(fileNames, d.Name())
-		}
-		return nil
-	})
-	return fileNames, err
+func (c compiler) cleanup(fileNames []string) {
+	for _, fileName := range fileNames {
+		os.Remove(filepath.Join(c.outputPath, fileName))
+	}
 }
