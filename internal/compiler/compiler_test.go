@@ -14,7 +14,7 @@ func TestRun(t *testing.T) {
 	compiler := compiler.New(outputPath, outputName)
 	paths := []string{
 		filepath.Join("testdata", "sample1.mp4"),
-		filepath.Join("testdata", "sample1.mp4"),
+		filepath.Join("testdata", "sample2.mp4"),
 	}
 
 	err := compiler.Run(paths)
