@@ -27,14 +27,14 @@ func New(outputPath, outputName string) compiler {
 }
 
 func (c compiler) Run(filePaths []string) error {
-	filesModified, err := c.equalizeTimebase(filePaths)
+	modifiedFileNames, err := c.equalizeTimebase(filePaths)
 	if err != nil {
 		log.Println(err)
 	}
 
-	fileListPath, err := c.prepareFileList(filesModified)
+	fileListPath, err := c.prepareFileList(modifiedFileNames)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to prepare file list: %v", err)
 	}
 
 	cmd := exec.Command(
@@ -45,15 +45,19 @@ func (c compiler) Run(filePaths []string) error {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("%v: %v", err, stderr.String())
+		return fmt.Errorf("failed to compile clips: %v: %v", err, stderr.String())
 	}
 
-	c.cleanup(filesModified)
+	err = c.cleanup(modifiedFileNames)
+	if err != nil {
+		log.Println(err)
+	}
+
 	return nil
 }
 
 func (c compiler) equalizeTimebase(filePaths []string) ([]string, error) {
-	var filesModified []string
+	var modifiedFileNames []string
 	var errs error
 
 	for _, path := range filePaths {
@@ -65,12 +69,15 @@ func (c compiler) equalizeTimebase(filePaths []string) ([]string, error) {
 			path, "-c", "copy",
 			"-video_track_timescale", "15360", newPath,
 		)
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+
 		if err := cmd.Run(); err != nil {
-			errs = errors.Join(errs, fmt.Errorf("skipped %v: %v", fileName, err))
+			errs = errors.Join(errs, fmt.Errorf("skipped %v: %v: %v", fileName, err, stderr.String()))
 		}
-		filesModified = append(filesModified, newFileName)
+		modifiedFileNames = append(modifiedFileNames, newFileName)
 	}
-	return filesModified, errs
+	return modifiedFileNames, errs
 }
 
 func (c compiler) prepareFileList(fileNames []string) (string, error) {
@@ -100,8 +107,18 @@ func appendFileNames(fileNames []string, dest io.Writer) error {
 	return nil
 }
 
-func (c compiler) cleanup(fileNames []string) {
+func (c compiler) cleanup(fileNames []string) error {
+	var errs error
 	for _, fileName := range fileNames {
-		os.Remove(filepath.Join(c.outputPath, fileName))
+		err := os.Remove(filepath.Join(c.outputPath, fileName))
+		if err != nil {
+			errs = errors.Join(errs, err)
+		}
 	}
+	err := os.Remove(filepath.Join(c.outputPath, fileListName))
+	if err != nil {
+		errs = errors.Join(errs, err)
+	}
+
+	return errs
 }
