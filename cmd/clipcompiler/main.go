@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/jaaanko/twitch-clip-compilation-tool/internal/compiler"
 	"github.com/jaaanko/twitch-clip-compilation-tool/internal/downloader"
@@ -32,24 +33,41 @@ func main() {
 		log.Fatal("Error initializing twitch service")
 	}
 
-	fmt.Println("Awaiting input...")
-
 	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
-	broadcasterId := scanner.Text()
+	var broadcasterId string
+	usernamePrompt := "Enter username of streamer: "
 
-	scanner.Scan()
-	startDate := scanner.Text()
+	for fmt.Print(usernamePrompt); scanner.Scan(); fmt.Print(usernamePrompt) {
+		broadcasterId, err = twitchSvc.GetBroadcasterID(scanner.Text())
+		if err == twitch.ErrUserNotFound {
+			fmt.Printf("Error: %v", err)
+		} else if err != nil {
+			log.Fatal(err)
+		} else {
+			break
+		}
+	}
 
+	fmt.Print("Enter start date (example: 2023-04-26): ")
+	scanner.Scan()
+	date, err := time.Parse("2006-01-02", scanner.Text())
+	if err != nil {
+		log.Fatal("error parsing date")
+	}
+	startDate := date.Format(time.RFC3339)
+
+	fmt.Print("Enter number of clips to fetch (max of 20 will be retrieved): ")
 	scanner.Scan()
 	count, err := strconv.Atoi(scanner.Text())
 	if err != nil {
-		log.Fatal("Not a valid integer")
+		log.Fatal(err)
 	}
+
+	fmt.Print("Downloading clips...")
 
 	urls, err := twitchSvc.GetClipURLs(broadcasterId, startDate, count)
 	if err != nil {
-		log.Fatal("Cannot fetch clips")
+		log.Fatalf("cannot fetch clips: %v", err)
 	}
 
 	downloadedClips, err := downloader.Run(outputDir, urls)
@@ -58,6 +76,8 @@ func main() {
 	} else if err != nil {
 		fmt.Println(err)
 	}
+
+	fmt.Print("Compiling downloaded clips...")
 
 	compiler := compiler.New(outputDir, "compilation.mp4")
 	if err = compiler.Run(downloadedClips); err != nil {

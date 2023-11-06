@@ -35,7 +35,17 @@ type clip struct {
 	ThumbnailURL string  `json:"thumbnail_url"`
 }
 
+type unexpectedStatusCodeError struct {
+	expected int
+	got      int
+}
+
+func (e unexpectedStatusCodeError) Error() string {
+	return fmt.Sprintf("expected status code: %v, got: %v", e.expected, e.got)
+}
+
 var errCreateDownloadURL = errors.New("unable to create download URL")
+var ErrUserNotFound = errors.New("user does not exist on twitch")
 
 func NewService(clientId, clientSecret, authBaseURL, apiBaseURL string) (*twitchService, error) {
 	token, err := getAccessToken(clientId, clientSecret, authBaseURL)
@@ -70,7 +80,7 @@ func getAccessToken(clientId, clientSecret, authBaseURL string) (accessToken, er
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return accessToken{}, fmt.Errorf("expected status code: %v, got: %v", http.StatusOK, res.StatusCode)
+		return accessToken{}, unexpectedStatusCodeError{expected: http.StatusOK, got: res.StatusCode}
 	}
 
 	var token accessToken
@@ -111,7 +121,7 @@ func (twitchSvc twitchService) GetClipURLs(broadcasterId, startDate string, coun
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("expected status code: %v, got: %v", http.StatusOK, res.StatusCode)
+		return nil, unexpectedStatusCodeError{expected: http.StatusOK, got: res.StatusCode}
 	}
 
 	var clipQueryRes clipQueryResponse
@@ -131,6 +141,53 @@ func (twitchSvc twitchService) GetClipURLs(broadcasterId, startDate string, coun
 	}
 
 	return downloadURLs, nil
+}
+
+func (twitchSvc twitchService) GetBroadcasterID(username string) (string, error) {
+	apiURL, err := url.JoinPath(twitchSvc.apiBaseURL, "users")
+	if err != nil {
+		return "", err
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return "nil", err
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", twitchSvc.accessToken.Value))
+	req.Header.Add("Client-Id", twitchSvc.clientId)
+
+	query := req.URL.Query()
+	query.Add("login", username)
+	req.URL.RawQuery = query.Encode()
+
+	res, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return "", unexpectedStatusCodeError{expected: http.StatusOK, got: res.StatusCode}
+	}
+
+	userQueryResponse := struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}{}
+
+	err = json.NewDecoder(res.Body).Decode(&userQueryResponse)
+	if err != nil {
+		return "", err
+	}
+
+	if len(userQueryResponse.Data) == 0 {
+		return "", ErrUserNotFound
+	}
+
+	return userQueryResponse.Data[0].ID, nil
 }
 
 func createDownloadURL(thumbnailURL string) (string, error) {
