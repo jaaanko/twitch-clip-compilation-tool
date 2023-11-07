@@ -25,16 +25,6 @@ type accessToken struct {
 	Type      string `json:"token_type"`
 }
 
-type clipQueryResponse struct {
-	Clips []clip `json:"data"`
-}
-
-type clip struct {
-	Duration     float32 `json:"duration"`
-	URL          string  `json:"url"`
-	ThumbnailURL string  `json:"thumbnail_url"`
-}
-
 type unexpectedStatusCodeError struct {
 	expected int
 	got      int
@@ -124,19 +114,24 @@ func (twitchSvc twitchService) GetClipURLs(broadcasterId, startDate string, coun
 		return nil, unexpectedStatusCodeError{expected: http.StatusOK, got: res.StatusCode}
 	}
 
-	var clipQueryRes clipQueryResponse
+	clipQueryRes := struct {
+		Data []struct {
+			ThumbnailURL string `json:"thumbnail_url"`
+		} `json:"data"`
+	}{}
+
 	err = json.NewDecoder(res.Body).Decode(&clipQueryRes)
 	if err != nil {
 		return nil, err
 	}
 
 	var downloadURLs []string
-	for _, clip := range clipQueryRes.Clips {
+	for _, clip := range clipQueryRes.Data {
 		downloadURL, err := createDownloadURL(clip.ThumbnailURL)
 		if err != errCreateDownloadURL {
 			downloadURLs = append(downloadURLs, downloadURL)
 		} else {
-			log.Println(errCreateDownloadURL, clip)
+			log.Printf("%v: skipping %v", errCreateDownloadURL, clip.ThumbnailURL)
 		}
 	}
 
