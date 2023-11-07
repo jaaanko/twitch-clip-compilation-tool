@@ -45,7 +45,7 @@ func (e unexpectedStatusCodeError) Error() string {
 }
 
 var errCreateDownloadURL = errors.New("unable to create download URL")
-var ErrUserNotFound = errors.New("user does not exist on twitch")
+var errUserNotFound = errors.New("user does not exist on twitch")
 
 func NewService(clientId, clientSecret, authBaseURL, apiBaseURL string) (*twitchService, error) {
 	token, err := getAccessToken(clientId, clientSecret, authBaseURL)
@@ -184,7 +184,7 @@ func (twitchSvc twitchService) GetBroadcasterID(username string) (string, error)
 	}
 
 	if len(userQueryResponse.Data) == 0 {
-		return "", ErrUserNotFound
+		return "", errUserNotFound
 	}
 
 	return userQueryResponse.Data[0].ID, nil

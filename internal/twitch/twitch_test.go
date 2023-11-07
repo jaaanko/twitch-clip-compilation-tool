@@ -19,8 +19,8 @@ func TestGetBroadcasterID_ReturnsOKStatusCode(t *testing.T) {
 	testDisplayName := "TesT1"
 
 	type result struct {
-		id  string
-		err error
+		id       string
+		hasError bool
 	}
 
 	response := map[string][]struct {
@@ -58,13 +58,13 @@ func TestGetBroadcasterID_ReturnsOKStatusCode(t *testing.T) {
 			authServer: authServer,
 			apiServer:  apiSuccessServer,
 			username:   testLogin,
-			want:       result{id: testID, err: nil},
+			want:       result{id: testID, hasError: false},
 		},
 		"resource server cannot find user": {
 			authServer: authServer,
 			apiServer:  apiSuccessServer,
 			username:   "test2",
-			want:       result{id: "", err: twitch.ErrUserNotFound},
+			want:       result{id: "", hasError: true},
 		},
 	}
 
@@ -76,9 +76,14 @@ func TestGetBroadcasterID_ReturnsOKStatusCode(t *testing.T) {
 			}
 
 			id, err := twitchSvc.GetBroadcasterID(tc.username)
+			hasError := err != nil
 
-			if tc.want.err != err {
-				t.Fatalf("expected error: %v, got: %v", tc.want.err, err)
+			if tc.want.hasError != hasError {
+				if tc.want.hasError {
+					t.Fatal("expected an error")
+				} else {
+					t.Fatalf("expected no error, got: %v", err)
+				}
 			}
 
 			if tc.want.id != id {
