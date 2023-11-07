@@ -12,11 +12,6 @@ import (
 	"github.com/jaaanko/twitch-clip-compilation-tool/internal/downloader"
 )
 
-type result struct {
-	downloaded map[string]bool
-	hasError   bool
-}
-
 func TestRun(t *testing.T) {
 	clip1 := "example1.mp4"
 	clip2 := "example2.mp4"
@@ -38,6 +33,11 @@ func TestRun(t *testing.T) {
 		w.Write([]byte("clip data"))
 	}))
 	defer successServer.Close()
+
+	type result struct {
+		downloaded map[string]bool
+		hasError   bool
+	}
 
 	tests := map[string]struct {
 		server *httptest.Server
