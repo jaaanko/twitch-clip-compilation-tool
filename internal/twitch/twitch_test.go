@@ -10,7 +10,7 @@ import (
 	"github.com/jaaanko/twitch-clip-compilation-tool/internal/twitch"
 )
 
-func TestGetBroadcasterID_ReturnsOKStatusCode(t *testing.T) {
+func TestGetBroadcasterID(t *testing.T) {
 	authServer := testAuthServer()
 	defer authServer.Close()
 
@@ -44,33 +44,43 @@ func TestGetBroadcasterID_ReturnsOKStatusCode(t *testing.T) {
 		} else {
 			json.NewEncoder(w).Encode(&response)
 		}
-
 	}))
 	defer apiSuccessServer.Close()
 
+	apiFailServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer apiFailServer.Close()
+
 	tests := map[string]struct {
-		authServer *httptest.Server
-		apiServer  *httptest.Server
-		username   string
-		want       result
+		authServerBaseURL string
+		apiServerBaseURL  string
+		username          string
+		want              result
 	}{
 		"resource server returns user": {
-			authServer: authServer,
-			apiServer:  apiSuccessServer,
-			username:   testLogin,
-			want:       result{id: testID, hasError: false},
+			authServerBaseURL: authServer.URL,
+			apiServerBaseURL:  apiSuccessServer.URL,
+			username:          testLogin,
+			want:              result{id: testID, hasError: false},
 		},
 		"resource server cannot find user": {
-			authServer: authServer,
-			apiServer:  apiSuccessServer,
-			username:   "test2",
-			want:       result{id: "", hasError: true},
+			authServerBaseURL: authServer.URL,
+			apiServerBaseURL:  apiSuccessServer.URL,
+			username:          "test2",
+			want:              result{id: "", hasError: true},
+		},
+		"resource server returns a non-successful status code": {
+			authServerBaseURL: authServer.URL,
+			apiServerBaseURL:  apiFailServer.URL,
+			username:          testLogin,
+			want:              result{id: "", hasError: true},
 		},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			twitchSvc, err := twitch.NewService("client_id", "client_secret", tc.authServer.URL, tc.apiServer.URL)
+			twitchSvc, err := twitch.NewService("client_id", "client_secret", tc.authServerBaseURL, tc.apiServerBaseURL)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -90,30 +100,6 @@ func TestGetBroadcasterID_ReturnsOKStatusCode(t *testing.T) {
 				t.Fatalf("expected id: %v, got: %v", tc.want.id, id)
 			}
 		})
-	}
-}
-
-func TestGetBroadcasterID_ReturnsNonOKStatusCode(t *testing.T) {
-	authServer := testAuthServer()
-	defer authServer.Close()
-
-	apiFailServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadRequest)
-	}))
-	defer apiFailServer.Close()
-
-	twitchSvc, err := twitch.NewService("client_id", "client_secret", authServer.URL, apiFailServer.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	id, err := twitchSvc.GetBroadcasterID("test")
-	if err == nil {
-		t.Fatal("expected an error")
-	}
-
-	if id != "" {
-		t.Fatalf("expected id to be an empty string, got: %v", id)
 	}
 }
 
@@ -163,33 +149,33 @@ func TestGetClipURLs(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		authServer *httptest.Server
-		apiServer  *httptest.Server
-		count      int
-		want       result
+		authServerBaseURL string
+		apiServerBaseURL  string
+		count             int
+		want              result
 	}{
 		"resource server returns a non-successful status code": {
-			authServer: authServer,
-			apiServer:  apiFailServer,
-			count:      2,
+			authServerBaseURL: authServer.URL,
+			apiServerBaseURL:  apiFailServer.URL,
+			count:             2,
 			want: result{
 				urls:     nil,
 				hasError: true,
 			},
 		},
-		"resource server returns successfully": {
-			authServer: authServer,
-			apiServer:  apiSuccessServer,
-			count:      2,
+		"resource server returns clips successfully": {
+			authServerBaseURL: authServer.URL,
+			apiServerBaseURL:  apiSuccessServer.URL,
+			count:             2,
 			want: result{
 				urls:     successURLs,
 				hasError: false,
 			},
 		},
 		"resource server has less clips than requested": {
-			authServer: authServer,
-			apiServer:  apiSuccessServer,
-			count:      3,
+			authServerBaseURL: authServer.URL,
+			apiServerBaseURL:  apiSuccessServer.URL,
+			count:             3,
 			want: result{
 				urls:     successURLs,
 				hasError: false,
@@ -199,7 +185,7 @@ func TestGetClipURLs(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			twitchSvc, err := twitch.NewService("client_id", "client_secret", tc.authServer.URL, tc.apiServer.URL)
+			twitchSvc, err := twitch.NewService("client_id", "client_secret", tc.authServerBaseURL, tc.apiServerBaseURL)
 			if err != nil {
 				t.Fatal(err)
 			}
