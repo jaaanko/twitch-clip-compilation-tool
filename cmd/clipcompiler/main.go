@@ -28,7 +28,7 @@ Arguments
 Options
 
 	--max	      :   Maximum number of clips to fetch, no more than 20. Default is 10.
-	--output-dir  :   Name of the directory where the final .mp4 file and any intermediary files will be placed. 
+	--output-dir  :   Name of the directory where the final .mp4 file and any temporary files will be placed. 
 	                  A default folder named "out" will be created in the current directory if not specified.
 	--output-file :   Name of the final .mp4 file. Default is "compilation.mp4".
 	--help        :   Displays this message and exits the program.
