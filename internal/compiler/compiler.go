@@ -48,9 +48,15 @@ func (c compiler) Run(filePaths []string) error {
 		return fmt.Errorf("failed to compile clips: %v: %v", err, stderr.String())
 	}
 
-	err = c.cleanup(modifiedFileNames)
+	toRemove := []string{fileListPath}
+	toRemove = append(toRemove, filePaths...)
+	for _, name := range modifiedFileNames {
+		toRemove = append(toRemove, filepath.Join(c.outputPath, name))
+	}
+
+	err = remove(toRemove)
 	if err != nil {
-		log.Println(err)
+		return err
 	}
 
 	return nil
@@ -107,18 +113,13 @@ func appendFileNames(fileNames []string, dest io.Writer) error {
 	return nil
 }
 
-func (c compiler) cleanup(fileNames []string) error {
+func remove(filePaths []string) error {
 	var errs error
-	for _, fileName := range fileNames {
-		err := os.Remove(filepath.Join(c.outputPath, fileName))
+	for _, path := range filePaths {
+		err := os.Remove(path)
 		if err != nil {
 			errs = errors.Join(errs, err)
 		}
 	}
-	err := os.Remove(filepath.Join(c.outputPath, fileListName))
-	if err != nil {
-		errs = errors.Join(errs, err)
-	}
-
 	return errs
 }
