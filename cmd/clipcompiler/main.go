@@ -12,7 +12,6 @@ import (
 	"github.com/jaaanko/twitch-clip-compilation-tool/internal/compiler"
 	"github.com/jaaanko/twitch-clip-compilation-tool/internal/downloader"
 	"github.com/jaaanko/twitch-clip-compilation-tool/internal/twitch"
-	"github.com/joho/godotenv"
 )
 
 const usageString = `
@@ -36,11 +35,6 @@ Options
 `
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("error loading .env file")
-	}
-
 	clientId := os.Getenv("CLIENT_ID")
 	clientSecret := os.Getenv("CLIENT_SECRET")
 	authBaseURL := os.Getenv("AUTH_BASE_URL")
