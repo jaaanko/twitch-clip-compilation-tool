@@ -128,10 +128,10 @@ func (twitchSvc twitchService) GetClipURLs(broadcasterId, startDate string, coun
 	var downloadURLs []string
 	for _, clip := range clipQueryRes.Data {
 		downloadURL, err := createDownloadURL(clip.ThumbnailURL)
-		if err != errCreateDownloadURL {
+		if !errors.Is(err, errCreateDownloadURL) {
 			downloadURLs = append(downloadURLs, downloadURL)
 		} else {
-			log.Printf("%v: skipping %v", errCreateDownloadURL, clip.ThumbnailURL)
+			log.Printf("%v: skipping %v", err, clip.ThumbnailURL)
 		}
 	}
 

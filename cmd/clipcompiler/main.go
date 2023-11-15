@@ -88,7 +88,7 @@ func main() {
 	}
 
 	downloadedClips, err := downloader.Run(*outputDir, urls)
-	if errors.Is(err, downloader.ErrMkdir) {
+	if errors.Is(err, downloader.ErrCreateOutputDir) {
 		log.Fatal(err)
 	} else if err != nil {
 		fmt.Println(err)

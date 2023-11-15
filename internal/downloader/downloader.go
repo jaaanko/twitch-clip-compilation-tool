@@ -11,12 +11,12 @@ import (
 	"sync"
 )
 
-var ErrMkdir = errors.New("failed to create output directory")
+var ErrCreateOutputDir = errors.New("failed to create output directory")
 
 func Run(outputPath string, urls []string) ([]string, error) {
 	err := os.MkdirAll(outputPath, 0750)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrMkdir, err)
+		return nil, errors.Join(ErrCreateOutputDir, err)
 	}
 
 	var wg sync.WaitGroup
