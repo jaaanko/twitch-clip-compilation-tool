@@ -13,16 +13,18 @@ import (
 )
 
 type compiler struct {
-	outputPath string
-	outputName string
+	outputPath       string
+	outputName       string
+	deleteInputFiles bool
 }
 
 const fileListName = "list.txt"
 
-func New(outputPath, outputName string) compiler {
+func New(outputPath, outputName string, deleteInputFiles bool) compiler {
 	return compiler{
-		outputPath: outputPath,
-		outputName: outputName,
+		outputPath:       outputPath,
+		outputName:       outputName,
+		deleteInputFiles: deleteInputFiles,
 	}
 }
 
@@ -49,13 +51,15 @@ func (c compiler) Run(filePaths []string) error {
 	}
 
 	toRemove := []string{fileListPath}
-	toRemove = append(toRemove, filePaths...)
+	if c.deleteInputFiles {
+		toRemove = append(toRemove, filePaths...)
+	}
+
 	for _, name := range modifiedFileNames {
 		toRemove = append(toRemove, filepath.Join(c.outputPath, name))
 	}
 
-	err = remove(toRemove)
-	if err != nil {
+	if err := remove(toRemove); err != nil {
 		return err
 	}
 

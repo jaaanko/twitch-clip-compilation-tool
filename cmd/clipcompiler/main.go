@@ -96,7 +96,7 @@ func main() {
 
 	fmt.Println("Compiling downloaded clips...")
 
-	compiler := compiler.New(*outputDir, *outputFileName)
+	compiler := compiler.New(*outputDir, *outputFileName, true)
 	if err = compiler.Run(downloadedClips); err != nil {
 		log.Fatal(err)
 	}
