@@ -82,7 +82,7 @@ func getAccessToken(clientId, clientSecret, authBaseURL string) (accessToken, er
 	return token, nil
 }
 
-func (twitchSvc twitchService) GetClipURLs(broadcasterId, startDate string, count int) ([]string, error) {
+func (twitchSvc twitchService) GetClipURLs(broadcasterId, startDate, endDate string, count int) ([]string, error) {
 	apiURL, err := url.JoinPath(twitchSvc.apiBaseURL, "clips")
 	if err != nil {
 		return nil, err
@@ -100,6 +100,7 @@ func (twitchSvc twitchService) GetClipURLs(broadcasterId, startDate string, coun
 	query := req.URL.Query()
 	query.Add("broadcaster_id", broadcasterId)
 	query.Add("started_at", startDate)
+	query.Add("ended_at", endDate)
 	query.Add("first", strconv.Itoa(count))
 	req.URL.RawQuery = query.Encode()
 

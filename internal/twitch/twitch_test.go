@@ -190,7 +190,7 @@ func TestGetClipURLs(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			urls, err := twitchSvc.GetClipURLs("0", "2023-10-05T00:00:00Z", tc.count)
+			urls, err := twitchSvc.GetClipURLs("0", "2023-10-05T00:00:00Z", "2023-10-06T23:59:59Z", tc.count)
 			hasError := err != nil
 
 			if tc.want.hasError != hasError {

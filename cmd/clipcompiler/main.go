@@ -16,14 +16,13 @@ import (
 
 const usageString = `
 
-Usage: %v [options] username start_date
+Usage: %v [options] username start_date end_date
 			 
 Arguments
 
 	username      :   Unique twitch username of the user you wish to watch clips from. [required]
-	start_date    :   Only clips created between this date and a week after will be fetched. 
-	                  YY-MM-DD format (example: 2023-04-26). [required]
-
+	start_date    :   Start date in YY-MM-DD format (example: 2023-04-26). [required]
+	end_date      :   End date in YY-MM-DD format (example: 2023-04-26). [required]
 Options
 
 	--max	      :   Maximum number of clips to fetch, no more than 20. Default is 10.
@@ -50,18 +49,19 @@ func main() {
 	outputFileName := flag.String("output-file", "compilation.mp4", "")
 	flag.Parse()
 	args := flag.Args()
-	var username, startDate string
+	var username, start, end string
 
 	switch len(args) {
 	case 0:
 		log.Fatal("no arguments provided")
-	case 1:
+	case 1, 2:
 		log.Fatal("insufficient arguments provided")
-	case 2:
+	case 3:
 		username = args[0]
-		startDate = args[1]
+		start = args[1]
+		end = args[2]
 	default:
-		log.Fatal("more than 2 arguments provided")
+		log.Fatal("more than 3 arguments provided")
 	}
 
 	twitchSvc, err := twitch.NewService(clientId, clientSecret, authBaseURL, apiBaseURL)
@@ -74,15 +74,22 @@ func main() {
 		log.Fatalf("error getting broadcaster id of %v: %v", username, err)
 	}
 
-	date, err := time.Parse("2006-01-02", startDate)
+	startTime, err := time.Parse("2006-01-02", start)
 	if err != nil {
 		log.Fatal(err)
 	}
-	startDate = date.Format(time.RFC3339)
+
+	endTime, err := time.Parse("2006-01-02", end)
+	if err != nil {
+		log.Fatal(err)
+	}
+	endTime = endTime.Add(time.Hour*time.Duration(23) +
+		time.Minute*time.Duration(59) +
+		time.Second*time.Duration(59))
 
 	fmt.Println("Downloading clips...")
 
-	urls, err := twitchSvc.GetClipURLs(broadcasterId, startDate, *max)
+	urls, err := twitchSvc.GetClipURLs(broadcasterId, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339), *max)
 	if err != nil {
 		log.Fatalf("error fetching clips: %v", err)
 	}
