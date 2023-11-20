@@ -92,6 +92,9 @@ func main() {
 	urls, err := twitchSvc.GetClipURLs(broadcasterId, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339), *max)
 	if err != nil {
 		log.Fatalf("error fetching clips: %v", err)
+	} else if len(urls) == 0 {
+		fmt.Println("No clips found within the specified date range.")
+		return
 	}
 
 	downloadedClips, err := downloader.Run(*outputDir, urls)
