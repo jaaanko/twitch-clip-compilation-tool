@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/jaaanko/twitch-clip-compilation-tool/internal/compiler"
 	"github.com/jaaanko/twitch-clip-compilation-tool/internal/downloader"
@@ -74,22 +73,9 @@ func main() {
 		log.Fatalf("error getting broadcaster id of %v: %v", username, err)
 	}
 
-	startTime, err := time.Parse("2006-01-02", start)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	endTime, err := time.Parse("2006-01-02", end)
-	if err != nil {
-		log.Fatal(err)
-	}
-	endTime = endTime.Add(time.Hour*time.Duration(23) +
-		time.Minute*time.Duration(59) +
-		time.Second*time.Duration(59))
-
 	fmt.Println("Downloading clips...")
 
-	urls, err := twitchSvc.GetClipURLs(broadcasterId, startTime.Format(time.RFC3339), endTime.Format(time.RFC3339), *max)
+	urls, err := twitchSvc.GetClipURLs(broadcasterId, start, end, *max)
 	if err != nil {
 		log.Fatalf("error fetching clips: %v", err)
 	} else if len(urls) == 0 {

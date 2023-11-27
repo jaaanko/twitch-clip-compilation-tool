@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type twitchService struct {
@@ -83,6 +84,19 @@ func getAccessToken(clientId, clientSecret, authBaseURL string) (accessToken, er
 }
 
 func (twitchSvc twitchService) GetClipURLs(broadcasterId, startDate, endDate string, count int) ([]string, error) {
+	startTime, err := time.Parse("2006-01-02", startDate)
+	if err != nil {
+		return nil, err
+	}
+
+	endTime, err := time.Parse("2006-01-02", endDate)
+	if err != nil {
+		return nil, err
+	}
+	endTime = endTime.Add(time.Hour*time.Duration(23) +
+		time.Minute*time.Duration(59) +
+		time.Second*time.Duration(59))
+
 	apiURL, err := url.JoinPath(twitchSvc.apiBaseURL, "clips")
 	if err != nil {
 		return nil, err
@@ -99,8 +113,8 @@ func (twitchSvc twitchService) GetClipURLs(broadcasterId, startDate, endDate str
 
 	query := req.URL.Query()
 	query.Add("broadcaster_id", broadcasterId)
-	query.Add("started_at", startDate)
-	query.Add("ended_at", endDate)
+	query.Add("started_at", startTime.Format(time.RFC3339))
+	query.Add("ended_at", endTime.Format(time.RFC3339))
 	query.Add("first", strconv.Itoa(count))
 	req.URL.RawQuery = query.Encode()
 
