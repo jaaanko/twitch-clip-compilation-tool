@@ -64,7 +64,14 @@ func download(path, url string) error {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("expected status code %v, got: %v", http.StatusOK, res.StatusCode)
+		body, err := io.ReadAll(res.Body)
+		var errMsg string
+		if err != nil {
+			errMsg = "unable to read response body"
+		} else {
+			errMsg = string(body)
+		}
+		return fmt.Errorf("unable to download clip: %v %v", res.StatusCode, errMsg)
 	}
 
 	file, err := os.Create(path)
