@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
@@ -18,7 +20,7 @@ import (
 	"github.com/jaaanko/twitch-clip-compilation-tool/internal/twitch"
 )
 
-type event struct {
+type request struct {
 	Username string `json:username`
 	Start    string `json:start`
 	End      string `json:end`
@@ -34,9 +36,11 @@ const (
 	ffmpegPath = "/opt/ffmpeg"
 )
 
-func handle(ctx context.Context, event *event) (*response, error) {
-	if event == nil {
-		return nil, fmt.Errorf("received nil event")
+func handle(ctx context.Context, event *events.LambdaFunctionURLRequest) (*response, error) {
+	var req request
+	err := json.Unmarshal([]byte(event.Body), &req)
+	if err != nil {
+		return nil, err
 	}
 
 	clientId := os.Getenv("TWITCH_CLIENT_ID")
@@ -49,12 +53,12 @@ func handle(ctx context.Context, event *event) (*response, error) {
 		return nil, fmt.Errorf("error initializing twitch service: %v", err)
 	}
 
-	broadcasterId, err := twitchSvc.GetBroadcasterID(event.Username)
+	broadcasterId, err := twitchSvc.GetBroadcasterID(req.Username)
 	if err != nil {
-		return nil, fmt.Errorf("error getting broadcaster id of %v: %v", event.Username, err)
+		return nil, fmt.Errorf("error getting broadcaster id of %v: %v", req.Username, err)
 	}
 
-	urls, err := twitchSvc.GetClipURLs(broadcasterId, event.Start, event.End, min(event.Count, 10))
+	urls, err := twitchSvc.GetClipURLs(broadcasterId, req.Start, req.End, min(req.Count, 10))
 	if err != nil {
 		return nil, fmt.Errorf("error fetching clips: %v", err)
 	} else if len(urls) == 0 {
@@ -66,7 +70,7 @@ func handle(ctx context.Context, event *event) (*response, error) {
 		return nil, err
 	}
 
-	outputFileName := fmt.Sprintf("%v-%v.mp4", event.Username, uuid.New().String())
+	outputFileName := fmt.Sprintf("%v-%v.mp4", req.Username, uuid.New().String())
 	compiler := compiler.New(outputDir, outputFileName, ffmpegPath, true)
 	if err = compiler.Run(downloadedClips); err != nil {
 		return nil, err
