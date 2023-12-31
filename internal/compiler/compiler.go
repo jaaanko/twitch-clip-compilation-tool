@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,15 +14,17 @@ import (
 type compiler struct {
 	outputPath       string
 	outputName       string
+	ffmpegPath       string
 	deleteInputFiles bool
 }
 
 const fileListName = "list.txt"
 
-func New(outputPath, outputName string, deleteInputFiles bool) compiler {
+func New(outputPath, outputName, ffmpegPath string, deleteInputFiles bool) compiler {
 	return compiler{
 		outputPath:       outputPath,
 		outputName:       outputName,
+		ffmpegPath:       ffmpegPath,
 		deleteInputFiles: deleteInputFiles,
 	}
 }
@@ -31,7 +32,7 @@ func New(outputPath, outputName string, deleteInputFiles bool) compiler {
 func (c compiler) Run(filePaths []string) error {
 	modifiedFileNames, err := c.equalizeTimebase(filePaths)
 	if err != nil {
-		log.Println(err)
+		return err
 	}
 
 	fileListPath, err := c.prepareFileList(modifiedFileNames)
@@ -40,7 +41,7 @@ func (c compiler) Run(filePaths []string) error {
 	}
 
 	cmd := exec.Command(
-		"ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i",
+		c.ffmpegPath, "-y", "-f", "concat", "-safe", "0", "-i",
 		fileListPath, "-c", "copy", filepath.Join(c.outputPath, c.outputName),
 	)
 	var stderr bytes.Buffer
@@ -75,7 +76,7 @@ func (c compiler) equalizeTimebase(filePaths []string) ([]string, error) {
 		newFileName := fmt.Sprintf("%v_modified.mp4", strings.TrimSuffix(fileName, filepath.Ext(fileName)))
 		newPath := filepath.Join(c.outputPath, newFileName)
 		cmd := exec.Command(
-			"ffmpeg", "-i",
+			c.ffmpegPath, "-i",
 			path, "-c", "copy",
 			"-video_track_timescale", "15360", newPath,
 		)
@@ -93,17 +94,18 @@ func (c compiler) equalizeTimebase(filePaths []string) ([]string, error) {
 func (c compiler) prepareFileList(fileNames []string) (string, error) {
 	path := filepath.Join(c.outputPath, fileListName)
 	fileList, err := os.Create(path)
+
 	if err != nil {
 		return "", err
 	}
 
+	defer fileList.Close()
 	errAppendName := appendFileNames(fileNames, fileList)
 	if errAppendName != nil {
-		fileList.Close()
 		errRemoveFile := os.Remove(path)
 		return "", errors.Join(errAppendName, errRemoveFile)
 	}
-	defer fileList.Close()
+
 	return path, nil
 }
 

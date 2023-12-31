@@ -11,7 +11,7 @@ import (
 func TestRun(t *testing.T) {
 	outputPath := t.TempDir()
 	outputName := "compilation.mp4"
-	compiler := compiler.New(outputPath, outputName, false)
+	compiler := compiler.New(outputPath, outputName, "ffmpeg", false)
 	paths := []string{
 		filepath.Join("testdata", "sample1.mp4"),
 		filepath.Join("testdata", "sample2.mp4"),
