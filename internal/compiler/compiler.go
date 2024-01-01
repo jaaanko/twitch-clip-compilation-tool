@@ -46,18 +46,13 @@ func (c compiler) Run(filePaths []string) error {
 	)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
+	toRemove := []string{fileListPath}
+	for _, name := range modifiedFileNames {
+		toRemove = append(toRemove, filepath.Join(c.outputPath, name))
+	}
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to compile clips: %v: %v", err, stderr.String())
-	}
-
-	toRemove := []string{fileListPath}
-	if c.deleteInputFiles {
-		toRemove = append(toRemove, filePaths...)
-	}
-
-	for _, name := range modifiedFileNames {
-		toRemove = append(toRemove, filepath.Join(c.outputPath, name))
 	}
 
 	if err := remove(toRemove); err != nil {
@@ -85,6 +80,10 @@ func (c compiler) equalizeTimebase(filePaths []string) ([]string, error) {
 
 		if err := cmd.Run(); err != nil {
 			errs = errors.Join(errs, fmt.Errorf("skipped %v: %v: %v", fileName, err, stderr.String()))
+		}
+
+		if err := os.Remove(path); err != nil {
+			errs = errors.Join(errs, err)
 		}
 		modifiedFileNames = append(modifiedFileNames, newFileName)
 	}
