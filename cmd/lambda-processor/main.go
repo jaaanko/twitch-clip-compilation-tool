@@ -103,6 +103,10 @@ func handle(ctx context.Context, event *events.SQSEvent) error {
 		return err
 	}
 
+	if err := os.Remove(filepath.Join(outputDir, outputFileName)); err != nil {
+		return err
+	}
+
 	return nil
 	//return &response{URL: presignedUrl.URL}, nil
 }
