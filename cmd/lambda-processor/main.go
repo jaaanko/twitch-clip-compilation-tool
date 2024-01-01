@@ -21,14 +21,14 @@ import (
 )
 
 type request struct {
-	Username string `json:username`
-	Start    string `json:start`
-	End      string `json:end`
-	Count    int    `json:count`
+	Username string `json:"username"`
+	Start    string `json:"start"`
+	End      string `json:"end"`
+	Count    int    `json:"count"`
 }
 
 type response struct {
-	URL string `json:url`
+	URL string `json:"url"`
 }
 
 const (
@@ -91,7 +91,7 @@ func handle(ctx context.Context, event *events.LambdaFunctionURLRequest) (*respo
 
 	bucketName := os.Getenv("DEST_S3_BUCKET_NAME")
 	presignClient := s3.NewPresignClient(s3Client)
-	presignedUrl, err := presignClient.PresignGetObject(context.Background(),
+	presignedUrl, err := presignClient.PresignGetObject(context.TODO(),
 		&s3.GetObjectInput{
 			Bucket: &bucketName,
 			Key:    &outputFileName,
