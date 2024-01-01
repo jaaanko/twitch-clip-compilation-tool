@@ -33,9 +33,9 @@ const (
 	ffmpegPath = "/opt/ffmpeg"
 )
 
-func handle(ctx context.Context, event *events.SQSMessage) error {
+func handle(ctx context.Context, event *events.SQSEvent) error {
 	var req request
-	err := json.Unmarshal([]byte(event.Body), &req)
+	err := json.Unmarshal([]byte(event.Records[0].Body), &req)
 	if err != nil {
 		return err
 	}
