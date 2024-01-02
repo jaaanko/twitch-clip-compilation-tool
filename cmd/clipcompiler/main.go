@@ -33,10 +33,10 @@ Options
 `
 
 func main() {
-	clientId := os.Getenv("CLIENT_ID")
-	clientSecret := os.Getenv("CLIENT_SECRET")
-	authBaseURL := os.Getenv("AUTH_BASE_URL")
-	apiBaseURL := os.Getenv("API_BASE_URL")
+	clientId := os.Getenv("TWITCH_CLIENT_ID")
+	clientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
+	authBaseURL := os.Getenv("TWITCH_AUTH_BASE_URL")
+	apiBaseURL := os.Getenv("TWITCH_API_BASE_URL")
 
 	programName := filepath.Base(os.Args[0])
 	flag.Usage = func() {
