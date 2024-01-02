@@ -140,10 +140,13 @@ func handle(ctx context.Context, event *events.SQSEvent) error {
 	if err != nil {
 		return err
 	}
-	dbClient.PutItem(context.TODO(), &dynamodb.PutItemInput{
+	_, err = dbClient.PutItem(context.TODO(), &dynamodb.PutItemInput{
 		Item:      mapItem,
 		TableName: &tableName,
 	})
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
