@@ -31,7 +31,7 @@ type response struct {
 	ID string `json:"id"`
 }
 
-func handle(ctx context.Context, event *events.LambdaFunctionURLRequest) (*response, error) {
+func handle(ctx context.Context, event *events.APIGatewayV2HTTPRequest) (*response, error) {
 	var req request
 	err := json.Unmarshal([]byte(event.Body), &req)
 	if err != nil {
@@ -68,11 +68,7 @@ func handle(ctx context.Context, event *events.LambdaFunctionURLRequest) (*respo
 		return nil, err
 	}
 
-	msg := message{
-		ID:      messageID,
-		UserID:  broadcasterId,
-		request: req,
-	}
+	msg := message{ID: messageID, UserID: broadcasterId, request: req}
 	b, err := json.Marshal(msg)
 	if err != nil {
 		return nil, err

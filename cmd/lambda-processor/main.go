@@ -32,10 +32,10 @@ type request struct {
 }
 
 type item struct {
-	ID       string  `json:"id"`
-	URL      *string `json:"url"`
-	Status   int     `json:"status"`
-	ErrorMsg *string `json:"error_msg"`
+	ID       string  `dynamodbav:"id"`
+	URL      *string `dynamodbav:"url"`
+	Status   int     `dynamodbav:"status"`
+	ErrorMsg *string `dynamodbav:"error_msg"`
 }
 
 const (
