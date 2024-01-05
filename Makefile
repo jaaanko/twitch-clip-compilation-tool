@@ -8,8 +8,8 @@ deploy-lambda:
 	zip lambda-api.zip bootstrap
 	rm bootstrap
 	aws lambda update-function-code \
-		--function-name  ${api-function-name} \
+		--function-name  ${API_FUNCTION_NAME} \
 		--zip-file fileb://./lambda-api.zip
 	aws lambda update-function-code \
-		--function-name  ${processor-function-name} \
+		--function-name  ${PROCESSOR_FUNCTION_NAME} \
 		--zip-file fileb://./lambda-processor.zip
