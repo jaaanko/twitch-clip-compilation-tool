@@ -39,7 +39,7 @@ func handle(ctx context.Context, event *events.APIGatewayV2HTTPRequest) (*events
 	if err != nil {
 		return apigateway.NewResponse(
 			http.StatusBadRequest, apigateway.NewErrorJSONString(err),
-		), err
+		), nil
 	}
 
 	clientId := os.Getenv("TWITCH_CLIENT_ID")
@@ -52,7 +52,7 @@ func handle(ctx context.Context, event *events.APIGatewayV2HTTPRequest) (*events
 		err = fmt.Errorf("error initializing twitch service: %w", err)
 		return apigateway.NewResponse(
 			http.StatusInternalServerError, apigateway.NewErrorJSONString(err),
-		), err
+		), nil
 	}
 
 	broadcasterId, err := twitchSvc.GetBroadcasterID(req.Username)
@@ -60,7 +60,7 @@ func handle(ctx context.Context, event *events.APIGatewayV2HTTPRequest) (*events
 		err = fmt.Errorf("error getting broadcaster id of %v: %w", req.Username, err)
 		return apigateway.NewResponse(
 			http.StatusBadRequest, apigateway.NewErrorJSONString(err),
-		), err
+		), nil
 	}
 
 	messageID := fmt.Sprintf("%v-%v", req.Username, uuid.New().String())
@@ -68,7 +68,7 @@ func handle(ctx context.Context, event *events.APIGatewayV2HTTPRequest) (*events
 	if err != nil {
 		return apigateway.NewResponse(
 			http.StatusInternalServerError, apigateway.NewErrorJSONString(err),
-		), err
+		), nil
 	}
 
 	sqsClient := sqs.NewFromConfig(cfg)
@@ -79,7 +79,7 @@ func handle(ctx context.Context, event *events.APIGatewayV2HTTPRequest) (*events
 	if err != nil {
 		return apigateway.NewResponse(
 			http.StatusInternalServerError, apigateway.NewErrorJSONString(err),
-		), err
+		), nil
 	}
 
 	msg := message{ID: messageID, UserID: broadcasterId, request: req}
@@ -87,7 +87,7 @@ func handle(ctx context.Context, event *events.APIGatewayV2HTTPRequest) (*events
 	if err != nil {
 		return apigateway.NewResponse(
 			http.StatusInternalServerError, apigateway.NewErrorJSONString(err),
-		), err
+		), nil
 	}
 
 	messageBody := string(b)
@@ -101,7 +101,7 @@ func handle(ctx context.Context, event *events.APIGatewayV2HTTPRequest) (*events
 	if err != nil {
 		return apigateway.NewResponse(
 			http.StatusInternalServerError, apigateway.NewErrorJSONString(err),
-		), err
+		), nil
 	}
 
 	resp := response{ID: messageID}
@@ -109,7 +109,7 @@ func handle(ctx context.Context, event *events.APIGatewayV2HTTPRequest) (*events
 	if err != nil {
 		return apigateway.NewResponse(
 			http.StatusInternalServerError, apigateway.NewErrorJSONString(err),
-		), err
+		), nil
 	}
 
 	return apigateway.NewResponse(http.StatusAccepted, string(b)), nil
