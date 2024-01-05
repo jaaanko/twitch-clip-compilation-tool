@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -11,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/google/uuid"
+	"github.com/jaaanko/twitch-clip-compilation-tool/internal/apigateway"
 	"github.com/jaaanko/twitch-clip-compilation-tool/internal/twitch"
 )
 
@@ -31,11 +33,13 @@ type response struct {
 	ID string `json:"id"`
 }
 
-func handle(ctx context.Context, event *events.APIGatewayV2HTTPRequest) (*response, error) {
+func handle(ctx context.Context, event *events.APIGatewayV2HTTPRequest) (*events.APIGatewayV2HTTPResponse, error) {
 	var req request
 	err := json.Unmarshal([]byte(event.Body), &req)
 	if err != nil {
-		return nil, err
+		return apigateway.NewResponse(
+			http.StatusBadRequest, apigateway.NewErrorJSONString(err),
+		), err
 	}
 
 	clientId := os.Getenv("TWITCH_CLIENT_ID")
@@ -45,48 +49,70 @@ func handle(ctx context.Context, event *events.APIGatewayV2HTTPRequest) (*respon
 
 	twitchSvc, err := twitch.NewService(clientId, clientSecret, authBaseURL, apiBaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("error initializing twitch service: %v", err)
+		err = fmt.Errorf("error initializing twitch service: %w", err)
+		return apigateway.NewResponse(
+			http.StatusInternalServerError, apigateway.NewErrorJSONString(err),
+		), err
 	}
 
 	broadcasterId, err := twitchSvc.GetBroadcasterID(req.Username)
 	if err != nil {
-		return nil, fmt.Errorf("error getting broadcaster id of %v: %v", req.Username, err)
+		err = fmt.Errorf("error getting broadcaster id of %v: %w", req.Username, err)
+		return apigateway.NewResponse(
+			http.StatusBadRequest, apigateway.NewErrorJSONString(err),
+		), err
 	}
 
 	messageID := fmt.Sprintf("%v-%v", req.Username, uuid.New().String())
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
-		return nil, err
+		return apigateway.NewResponse(
+			http.StatusInternalServerError, apigateway.NewErrorJSONString(err),
+		), err
 	}
 
 	sqsClient := sqs.NewFromConfig(cfg)
 	queueName := os.Getenv("SQS_QUEUE_NAME")
-	output, err := sqsClient.GetQueueUrl(context.TODO(), &sqs.GetQueueUrlInput{
+	output, err := sqsClient.GetQueueUrl(ctx, &sqs.GetQueueUrlInput{
 		QueueName: &queueName,
 	})
 	if err != nil {
-		return nil, err
+		return apigateway.NewResponse(
+			http.StatusInternalServerError, apigateway.NewErrorJSONString(err),
+		), err
 	}
 
 	msg := message{ID: messageID, UserID: broadcasterId, request: req}
 	b, err := json.Marshal(msg)
 	if err != nil {
-		return nil, err
+		return apigateway.NewResponse(
+			http.StatusInternalServerError, apigateway.NewErrorJSONString(err),
+		), err
 	}
 
-	body := string(b)
+	messageBody := string(b)
 	_, err = sqsClient.SendMessage(
-		context.TODO(),
+		ctx,
 		&sqs.SendMessageInput{
 			QueueUrl:    output.QueueUrl,
-			MessageBody: &body,
+			MessageBody: &messageBody,
 		},
 	)
 	if err != nil {
-		return nil, err
+		return apigateway.NewResponse(
+			http.StatusInternalServerError, apigateway.NewErrorJSONString(err),
+		), err
 	}
 
-	return &response{ID: messageID}, nil
+	resp := response{ID: messageID}
+	b, err = json.Marshal(resp)
+	if err != nil {
+		return apigateway.NewResponse(
+			http.StatusInternalServerError, apigateway.NewErrorJSONString(err),
+		), err
+	}
+
+	return apigateway.NewResponse(http.StatusAccepted, string(b)), nil
 }
 
 func main() {

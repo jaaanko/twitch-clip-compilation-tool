@@ -44,7 +44,7 @@ const (
 )
 
 func handle(ctx context.Context, event *events.SQSEvent) error {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func handle(ctx context.Context, event *events.SQSEvent) error {
 			if marshalErr != nil {
 				err = errors.Join(err, marshalErr)
 			} else {
-				dbClient.PutItem(context.TODO(), &dynamodb.PutItemInput{
+				dbClient.PutItem(ctx, &dynamodb.PutItemInput{
 					Item:      mapItem,
 					TableName: &tableName,
 				})
@@ -110,7 +110,7 @@ func handle(ctx context.Context, event *events.SQSEvent) error {
 	defer file.Close()
 
 	bucketName := os.Getenv("DEST_S3_BUCKET_NAME")
-	_, err = uploader.Upload(context.TODO(), &s3.PutObjectInput{
+	_, err = uploader.Upload(ctx, &s3.PutObjectInput{
 		Bucket: &bucketName,
 		Key:    &outputFileName,
 		Body:   file,
@@ -120,7 +120,7 @@ func handle(ctx context.Context, event *events.SQSEvent) error {
 	}
 
 	presignClient := s3.NewPresignClient(s3Client)
-	presignedUrl, err := presignClient.PresignGetObject(context.TODO(),
+	presignedUrl, err := presignClient.PresignGetObject(ctx,
 		&s3.GetObjectInput{
 			Bucket: &bucketName,
 			Key:    &outputFileName,
@@ -140,7 +140,7 @@ func handle(ctx context.Context, event *events.SQSEvent) error {
 	if err != nil {
 		return err
 	}
-	_, err = dbClient.PutItem(context.TODO(), &dynamodb.PutItemInput{
+	_, err = dbClient.PutItem(ctx, &dynamodb.PutItemInput{
 		Item:      mapItem,
 		TableName: &tableName,
 	})
