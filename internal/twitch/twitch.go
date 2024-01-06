@@ -166,6 +166,10 @@ func (twitchSvc *twitchService) GetClipURLs(broadcasterId, startDate, endDate st
 		return nil, err
 	}
 
+	if len(clipQueryRes.Data) == 0 {
+		return nil, fmt.Errorf("no clips found from %v to %v", start, end)
+	}
+
 	var downloadURLs []string
 	for _, clip := range clipQueryRes.Data {
 		downloadURL, err := createDownloadURL(clip.ThumbnailURL)

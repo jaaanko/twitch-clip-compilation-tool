@@ -49,7 +49,7 @@ func handle(ctx context.Context, event *events.APIGatewayV2HTTPRequest) (*events
 
 	twitchSvc, err := twitch.NewService(clientId, clientSecret, authBaseURL, apiBaseURL)
 	if err != nil {
-		err = fmt.Errorf("error initializing twitch service: %w", err)
+		err = fmt.Errorf("unable to initialize twitch service: %w", err)
 		return apigateway.NewResponse(
 			http.StatusInternalServerError, apigateway.NewErrorJSONString(err),
 		), nil
@@ -57,7 +57,7 @@ func handle(ctx context.Context, event *events.APIGatewayV2HTTPRequest) (*events
 
 	broadcasterId, err := twitchSvc.GetBroadcasterID(req.Username)
 	if err != nil {
-		err = fmt.Errorf("error getting broadcaster id of %v: %w", req.Username, err)
+		err = fmt.Errorf("unable to get broadcaster id of %v: %w", req.Username, err)
 		return apigateway.NewResponse(
 			http.StatusBadRequest, apigateway.NewErrorJSONString(err),
 		), nil

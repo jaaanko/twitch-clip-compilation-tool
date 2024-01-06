@@ -80,14 +80,12 @@ func handle(ctx context.Context, event *events.SQSEvent) error {
 
 	twitchSvc, err := twitch.NewService(clientId, clientSecret, authBaseURL, apiBaseURL)
 	if err != nil {
-		return fmt.Errorf("error initializing twitch service: %v", err)
+		return err
 	}
 
 	urls, err := twitchSvc.GetClipURLs(req.UserID, req.Start, req.End, min(req.Count, 10))
 	if err != nil {
-		return fmt.Errorf("error fetching clips: %v", err)
-	} else if len(urls) == 0 {
-		return fmt.Errorf("no clips found within the specified date range")
+		return err
 	}
 
 	downloadedClips, err := downloader.Run(outputDir, urls)
