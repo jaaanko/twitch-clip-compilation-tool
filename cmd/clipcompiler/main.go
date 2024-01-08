@@ -92,7 +92,11 @@ func main() {
 
 	fmt.Println("Compiling downloaded clips...")
 
-	compiler := compiler.New(*outputDir, *outputFileName, "ffmpeg", true)
+	compiler := compiler.New(
+		compiler.WithOutputDir(*outputDir),
+		compiler.WithOutputFileName(*outputFileName),
+	)
+
 	if err = compiler.Run(downloadedClips); err != nil {
 		log.Fatal(err)
 	}

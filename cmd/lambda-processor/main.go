@@ -94,7 +94,11 @@ func handle(ctx context.Context, event *events.SQSEvent) error {
 	}
 
 	outputFileName := fmt.Sprintf("%v-%v.mp4", req.Username, uuid.New().String())
-	compiler := compiler.New(outputDir, outputFileName, ffmpegPath, true)
+	compiler := compiler.New(
+		compiler.WithOutputDir(outputDir),
+		compiler.WithOutputFileName(outputFileName),
+		compiler.WithFFmpegPath(ffmpegPath),
+	)
 	if err = compiler.Run(downloadedClips); err != nil {
 		return err
 	}

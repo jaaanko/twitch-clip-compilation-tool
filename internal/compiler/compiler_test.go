@@ -9,9 +9,12 @@ import (
 )
 
 func TestRun(t *testing.T) {
-	outputPath := t.TempDir()
+	outputDir := t.TempDir()
 	outputName := "compilation.mp4"
-	compiler := compiler.New(outputPath, outputName, "ffmpeg", false)
+	compiler := compiler.New(
+		compiler.WithOutputDir(outputDir),
+		compiler.WithCleanup(false),
+	)
 	paths := []string{
 		filepath.Join("testdata", "sample1.mp4"),
 		filepath.Join("testdata", "sample2.mp4"),
@@ -22,7 +25,7 @@ func TestRun(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dir, err := os.Open(outputPath)
+	dir, err := os.Open(outputDir)
 	if err != nil {
 		t.Fatal(err)
 	}

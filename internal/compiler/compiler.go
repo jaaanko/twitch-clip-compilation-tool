@@ -12,20 +12,50 @@ import (
 )
 
 type compiler struct {
-	outputPath       string
-	outputName       string
-	ffmpegPath       string
-	deleteInputFiles bool
+	outputDir      string
+	outputFileName string
+	ffmpegPath     string
+	cleanup        bool
 }
 
 const fileListName = "list.txt"
 
-func New(outputPath, outputName, ffmpegPath string, deleteInputFiles bool) compiler {
-	return compiler{
-		outputPath:       outputPath,
-		outputName:       outputName,
-		ffmpegPath:       ffmpegPath,
-		deleteInputFiles: deleteInputFiles,
+func New(options ...func(*compiler)) compiler {
+	c := compiler{
+		outputDir:      "out",
+		outputFileName: "compilation.mp4",
+		ffmpegPath:     "ffmpeg",
+		cleanup:        true,
+	}
+
+	for _, opt := range options {
+		opt(&c)
+	}
+
+	return c
+}
+
+func WithOutputDir(outputDir string) func(*compiler) {
+	return func(c *compiler) {
+		c.outputDir = outputDir
+	}
+}
+
+func WithOutputFileName(outputFileName string) func(*compiler) {
+	return func(c *compiler) {
+		c.outputFileName = outputFileName
+	}
+}
+
+func WithFFmpegPath(ffmpegPath string) func(*compiler) {
+	return func(c *compiler) {
+		c.ffmpegPath = ffmpegPath
+	}
+}
+
+func WithCleanup(cleanup bool) func(*compiler) {
+	return func(c *compiler) {
+		c.cleanup = cleanup
 	}
 }
 
@@ -42,20 +72,21 @@ func (c compiler) Run(filePaths []string) error {
 
 	cmd := exec.Command(
 		c.ffmpegPath, "-y", "-f", "concat", "-safe", "0", "-i",
-		fileListPath, "-c", "copy", filepath.Join(c.outputPath, c.outputName),
+		fileListPath, "-c", "copy", filepath.Join(c.outputDir, c.outputFileName),
 	)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
-	toRemove := []string{fileListPath}
+
+	filesToRemove := []string{fileListPath}
 	for _, name := range modifiedFileNames {
-		toRemove = append(toRemove, filepath.Join(c.outputPath, name))
+		filesToRemove = append(filesToRemove, filepath.Join(c.outputDir, name))
 	}
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to compile clips: %v: %v", err, stderr.String())
 	}
 
-	if err := remove(toRemove); err != nil {
+	if err := removeAll(filesToRemove); err != nil {
 		return err
 	}
 
@@ -69,10 +100,9 @@ func (c compiler) equalizeTimebase(filePaths []string) ([]string, error) {
 	for _, path := range filePaths {
 		fileName := filepath.Base(path)
 		newFileName := fmt.Sprintf("%v_modified.mp4", strings.TrimSuffix(fileName, filepath.Ext(fileName)))
-		newPath := filepath.Join(c.outputPath, newFileName)
+		newPath := filepath.Join(c.outputDir, newFileName)
 		cmd := exec.Command(
-			c.ffmpegPath, "-i",
-			path, "-c", "copy",
+			c.ffmpegPath, "-i", path, "-c", "copy",
 			"-video_track_timescale", "15360", newPath,
 		)
 		var stderr bytes.Buffer
@@ -82,18 +112,22 @@ func (c compiler) equalizeTimebase(filePaths []string) ([]string, error) {
 			errs = errors.Join(errs, fmt.Errorf("skipped %v: %v: %v", fileName, err, stderr.String()))
 		}
 
-		if err := os.Remove(path); err != nil {
-			errs = errors.Join(errs, err)
+		if c.cleanup {
+			err := os.Remove(path)
+			if err != nil {
+				errs = errors.Join(errs, err)
+			}
 		}
+
 		modifiedFileNames = append(modifiedFileNames, newFileName)
 	}
+
 	return modifiedFileNames, errs
 }
 
 func (c compiler) prepareFileList(fileNames []string) (string, error) {
-	path := filepath.Join(c.outputPath, fileListName)
+	path := filepath.Join(c.outputDir, fileListName)
 	fileList, err := os.Create(path)
-
 	if err != nil {
 		return "", err
 	}
@@ -115,10 +149,11 @@ func appendFileNames(fileNames []string, dest io.Writer) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
-func remove(filePaths []string) error {
+func removeAll(filePaths []string) error {
 	var errs error
 	for _, path := range filePaths {
 		err := os.Remove(path)
@@ -126,5 +161,6 @@ func remove(filePaths []string) error {
 			errs = errors.Join(errs, err)
 		}
 	}
+
 	return errs
 }
