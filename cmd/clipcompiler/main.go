@@ -13,7 +13,10 @@ import (
 	"github.com/jaaanko/twitch-clip-compilation-tool/internal/twitch"
 )
 
-const usageString = `
+const (
+	authBaseURL = "https://id.twitch.tv"
+	apiBaseURL  = "https://api.twitch.tv/helix"
+	usageString = `
 
 Usage: %v [options] username start_date end_date
 			 
@@ -24,20 +27,18 @@ Arguments
 	end_date      :   End date in YY-MM-DD format (example: 2023-04-26). [required]
 Options
 
-	--max	      :   Maximum number of clips to fetch, no more than 20. Default is 10.
+	--max	      :   Maximum number of clips to fetch. Default is 10.
 	--output-dir  :   Name of the directory where the final .mp4 file and any temporary files will be placed. 
 	                  A default folder named "out" will be created in the current directory if not specified.
 	--output-file :   Name of the final .mp4 file. Default is "compilation.mp4".
 	--help        :   Displays this message and exits the program.
 
 `
+)
 
 func main() {
 	clientId := os.Getenv("TWITCH_CLIENT_ID")
 	clientSecret := os.Getenv("TWITCH_CLIENT_SECRET")
-	authBaseURL := os.Getenv("TWITCH_AUTH_BASE_URL")
-	apiBaseURL := os.Getenv("TWITCH_API_BASE_URL")
-
 	programName := filepath.Base(os.Args[0])
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, usageString, programName)
