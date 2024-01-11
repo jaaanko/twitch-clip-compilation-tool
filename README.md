@@ -40,7 +40,7 @@ For a guide on how to add environment variables to your system, kindly refer to 
   - [Linux](https://phoenixnap.com/kb/linux-set-environment-variable)
 
 ## Installation
-You may download the binary for Windows and Linux from the releases page. 
+You may download the binary for Windows and Linux from the [releases page](https://github.com/jaaanko/twitch-clip-compilation-tool/releases). 
 
 Alternatively, if you have Go installed, you may also run the following command:
 
