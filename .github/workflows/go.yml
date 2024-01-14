@@ -17,7 +17,13 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: '1.21.x'
-        
+    
+    - name: Set up FFmpeg
+      uses: FedericoCarboni/setup-ffmpeg@v3
+      with:
+        ffmpeg-version: release
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Install dependencies
       run: go get ./...
       
